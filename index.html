@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkipQ - Ghana Bus Booking Platform</title>
+    <!-- Firebase SDK -->
+
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body class="bg-gradient-to-br from-gray-50 via-blue-50 to-red-50 min-h-screen">
+    <!-- Header -->
+    <header class="skipq-gradient shadow-2xl">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <div class="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                            <span class="text-3xl">⚡</span>
+                        </div>
+                        <div class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full pulse-ring"></div>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-white tracking-tight">SkipQ</h1>
+                        <p class="text-red-100 text-sm font-medium">Skip the Queue, Book with Ease</p>
+                    </div>
+                </div>
+                <div id="userInfo" class="hidden">
+                    <div class="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <span class="text-white">Welcome, </span>
+                        <span id="userPhone" class="font-semibold text-yellow-200"></span>
+                        <button onclick="logout()" class="ml-4 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm transition duration-200">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Login/Signup Screen -->
+<div id="authScreen" class="max-w-md mx-auto skipq-card rounded-2xl p-8 fade-in border border-gray-100">
+    <div class="text-center mb-8">
+      <div class="w-20 h-20 skipq-gradient rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <span class="text-4xl text-white">⚡</span>
+      </div>
+      <h2 class="text-3xl font-bold bg-gradient-to-r from-red-600 to-blue-600 bg-clip-text text-transparent mb-2">
+        Welcome to SkipQ
+      </h2>
+      <p class="text-gray-600 font-medium">Skip the queue, book your journey instantly</p>
+    </div>
+  
+    <div class="space-y-6">
+      <!-- Phone Number Input -->
+      <div>
+        <label class="block text-sm font-bold text-gray-800 mb-3">🇬🇭 Ghana Mobile Number</label>
+        <div class="flex shadow-lg rounded-xl overflow-hidden">
+          <span
+            class="inline-flex items-center px-4 bg-gradient-to-r from-red-500 to-blue-500 text-white font-bold">+233</span>
+          <input type="tel" id="phoneInput" placeholder="XXX XXX XXX"
+            class="flex-1 border-0 px-4 py-4 focus:ring-2 focus:ring-red-500 focus:outline-none text-lg font-medium"
+            maxlength="11">
+        </div>
+        <div class="mt-3 p-3 bg-gradient-to-r from-blue-50 to-red-50 rounded-lg border border-blue-200">
+          <p class="text-sm text-blue-700 font-medium">📱 Enter your real Ghana mobile number to receive OTP</p>
+        </div>
+      </div>
+            <!-- Firebase reCAPTCHA will be injected here -->
+            <div id="recaptcha-container"></div>
+  
+      <!-- OTP Section -->
+      <div id="otpSection" class="hidden">
+        <label class="block text-sm font-bold text-gray-800 mb-3">🔐 Enter Verification Code</label>
+        <input type="text" id="otpInput" placeholder="Enter 6-digit code"
+          class="w-full rounded-xl border-2 border-gray-200 px-4 py-4 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-lg font-mono text-center tracking-widest shadow-lg"
+          maxlength="6">
+        <p class="text-sm text-gray-600 mt-2 text-center">📱 Code sent to +233<span id="displayPhone"></span></p>
+      </div>
+  
+      <!-- Auth Button -->
+      <button id="authButton"
+        class="w-full skipq-button text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg">
+        🚀 Send OTP
+      </button>
+  
+  
+      <script type="module">
+        document.getElementById("authButton").addEventListener("click", handleAuth);
+        // ✅ Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  
+        // ✅ Your Firebase Config
+        const firebaseConfig = {
+          apiKey: "AIzaSyAVOqVMzyxdtdiNM9ZwYKKqZ6hD16q4iUQ",
+          authDomain: "skipq-5840a.firebaseapp.com",
+          projectId: "skipq-5840a",
+          storageBucket: "skipq-5840a.firebasestorage.app",
+          messagingSenderId: "780767557017",
+          appId: "1:780767557017:web:6d327faea9b0a58d678f08",
+          measurementId: "G-REK5510ZGZ"
+        };
+  
+        // ✅ Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+  
+        // 🔹 Global state
+        let confirmationResult = null;
+        let isOtpSent = false;
+  
+        async function handleAuth() {
+          const phoneInput = document.getElementById("phoneInput");
+          const otpInput = document.getElementById("otpInput");
+          const authButton = document.getElementById("authButton");
+          const otpSection = document.getElementById("otpSection");
+
+          if (authButton.disabled) return;
+  
+          if (!isOtpSent) {
+            // validate number
+            const phone = phoneInput.value.replace(/\D/g, ""); 
+if (!/^(2|5)\d{8}$/.test(phone)) {
+  alert("Please enter a valid 9-digit Ghana mobile number (starting with 2 or 5).");
+  return;
+}
+
+  
+            const fullPhone = "+233" + phone;
+  
+            try {
+              // setup invisible reCAPTCHA once
+              if (!window.recaptchaVerifier) {
+  window.recaptchaVerifier = new RecaptchaVerifier(
+    auth,
+    "recaptcha-container", // must match your <div id="recaptcha-container"></div>
+    { size: "invisible" }
+  );
+}
+
+  
+              // send OTP
+              confirmationResult = await signInWithPhoneNumber(auth, fullPhone, window.recaptchaVerifier);
+  
+              document.getElementById("displayPhone").textContent = phoneInput.value;
+              otpSection.classList.remove("hidden");
+              authButton.textContent = "Verify OTP";
+              isOtpSent = true;
+              phoneInput.disabled = true;
+  
+              alert("📲 OTP sent to " + fullPhone);
+            } catch (error) {
+              alert("Error sending OTP: " + error.message);
+            }
+  
+          } else {
+            const otp = otpInput.value;
+            if (otp.length !== 6) {
+              alert("Please enter a valid 6-digit OTP");
+              return;
+            }
+  
+            try {
+                authButton.disabled = true;
+      authButton.textContent = "Verifying...";
+
+  const result = await confirmationResult.confirm(otp);
+  const user = result.user;
+
+  alert("✅ Phone verified: " + user.phoneNumber);
+
+  // disable button to prevent re-clicks
+  authButton.disabled = true;
+
+  // go to booking screen
+  showBookingScreen();
+  
+  return; // ✅ stop execution so catch won't accidentally run
+} catch (error) {
+  alert("❌ Invalid OTP: " + error.message);
+  // allow retry
+  authButton.disabled = false;
+      authButton.textContent = "Verify OTP";
+}
+
+          }
+        }
+  
+        // ✅ expose function to button onclick
+        window.handleAuth = handleAuth;
+
+
+      </script>
+  
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <button onclick="adminLogin()"
+          class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-xl text-lg shadow-lg transition duration-300">
+          👑 Admin Login
+        </button>
+        <p class="text-xs text-gray-500 text-center mt-2">Admin access for system management</p>
+      </div>
+    </div>
+  </div>
+  
+
+        <!-- Booking Screen -->
+        <div id="bookingScreen" class="hidden fade-in">
+            <div class="max-w-4xl mx-auto">
+                <div class="skipq-card rounded-2xl p-8 mb-8 border border-gray-100">
+                    <div class="flex items-center space-x-4 mb-8">
+                        <div class="w-12 h-12 skipq-gradient rounded-xl flex items-center justify-center">
+                            <span class="text-2xl text-white">🎫</span>
+                        </div>
+                        <div>
+                            <h2 class="text-3xl font-bold bg-gradient-to-r from-red-600 to-blue-600 bg-clip-text text-transparent">Book Your Journey</h2>
+                            <p class="text-gray-600 font-medium">Choose your departure station and destination</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Departure Station Selection -->
+                        <div class="bg-gradient-to-br from-blue-50 to-green-50 p-4 rounded-xl border border-blue-100">
+                            <label class="block text-sm font-bold text-gray-800 mb-3">🚏 Departure Station (Where you are)</label>
+                            
+                            <!-- Departure Region Selection -->
+                            <select id="departureRegionSelect" onchange="updateDepartureStations()" 
+                                    class="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base font-medium shadow-lg bg-white mb-3">
+                                <option value="">1️⃣ First, select your region</option>
+                            </select>
+                            
+                            <!-- Departure Station Selection -->
+                            <select id="departureStationSelect" onchange="updateDestinations()" disabled
+                                    class="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base font-medium shadow-lg bg-white disabled:bg-gray-100">
+                                <option value="">2️⃣ Then, choose your station</option>
+                            </select>
+                        </div>
+
+                        <!-- Destination Selection -->
+                        <div class="bg-gradient-to-br from-red-50 to-orange-50 p-4 rounded-xl border border-red-100">
+                            <label class="block text-sm font-bold text-gray-800 mb-3">🏙️ Destination (Where you're going)</label>
+                            
+                            <!-- Destination Region Selection -->
+                            <select id="destinationRegionSelect" onchange="updateDestinationCities()" disabled
+                                    class="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-base font-medium shadow-lg bg-white disabled:bg-gray-100 mb-3">
+                                <option value="">1️⃣ First, select destination region</option>
+                            </select>
+                            
+                            <!-- Destination City Selection -->
+                            <select id="destinationSelect" disabled 
+                                    class="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-base font-medium shadow-lg bg-white disabled:bg-gray-100">
+                                <option value="">2️⃣ Then, choose your destination</option>
+                            </select>
+                        </div>
+
+                        <!-- Travel Date -->
+                        <div class="bg-gradient-to-br from-red-50 to-blue-50 p-4 rounded-xl border border-red-100">
+                            <label class="block text-sm font-bold text-gray-800 mb-3">📅 Travel Date</label>
+                            <input type="date" id="travelDate" onchange="checkExcludedDate()"
+                                   class="w-full rounded-xl border-2 border-gray-200 px-4 py-4 focus:ring-2 focus:ring-red-500 focus:border-red-500 text-lg font-medium shadow-lg bg-white">
+                            <div id="dateWarning" class="hidden mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-red-600">⚠️</span>
+                                    <div>
+                                        <p class="text-red-800 font-semibold text-sm">Date Not Available</p>
+                                        <p id="dateWarningReason" class="text-red-700 text-sm"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Number of Passengers -->
+                        <div class="bg-gradient-to-br from-blue-50 to-red-50 p-4 rounded-xl border border-blue-100">
+                            <label class="block text-sm font-bold text-gray-800 mb-3">👥 Passengers</label>
+                            <select id="passengerCount" 
+                                    class="w-full rounded-xl border-2 border-gray-200 px-4 py-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-medium shadow-lg bg-white">
+                                <option value="1">1️⃣ 1 Passenger</option>
+                                <option value="2">2️⃣ 2 Passengers</option>
+                                <option value="3">3️⃣ 3 Passengers</option>
+                                <option value="4">4️⃣ 4 Passengers</option>
+                                <option value="5">5️⃣ 5+ Passengers</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Price Display -->
+                    <div id="priceDisplay" class="hidden mt-8 p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border-2 border-green-200 shadow-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-2xl">💰</span>
+                                <span class="text-xl font-bold text-gray-800">Total Price:</span>
+                            </div>
+                            <span id="totalPrice" class="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">GH₵ 0</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t border-green-200">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-lg">🪑</span>
+                                <span class="text-sm font-medium text-gray-700">Seats Available:</span>
+                            </div>
+                            <span id="seatsAvailable" class="text-lg font-bold text-orange-600">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div id="paymentMethods" class="hidden mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <span class="text-2xl mr-2">💳</span>
+                            Choose Payment Method
+                        </h3>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div class="bg-white p-4 rounded-xl border-2 border-gray-200 hover:border-green-400 cursor-pointer transition-all duration-300" onclick="selectPaymentMethod('card')">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">💳</div>
+                                    <h4 class="font-bold text-gray-800">Card Payment</h4>
+                                    <p class="text-sm text-gray-600">Visa, Mastercard, Verve</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 cursor-pointer transition-all duration-300" onclick="selectPaymentMethod('mobile_money')">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">📱</div>
+                                    <h4 class="font-bold text-gray-800">Mobile Money</h4>
+                                    <p class="text-sm text-gray-600">MTN, Vodafone, AirtelTigo</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl border-2 border-gray-200 hover:border-purple-400 cursor-pointer transition-all duration-300" onclick="selectPaymentMethod('bank_transfer')">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">🏦</div>
+                                    <h4 class="font-bold text-gray-800">Bank Transfer</h4>
+                                    <p class="text-sm text-gray-600">Direct bank payment</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="selectedPaymentMethod" class="hidden mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
+                            <p class="text-green-800 font-medium">✅ Payment method selected: <span id="paymentMethodName"></span></p>
+                        </div>
+                    </div>
+
+                    <button id="bookButton" onclick="initiatePayment()" disabled
+                            class="w-full mt-8 skipq-secondary disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-2xl text-xl shadow-lg transition duration-300">
+                        <span id="bookButtonText">🎫 Book Your Ticket Now</span>
+                        <div id="paymentLoader" class="hidden inline-block ml-2 w-5 h-5 border-2 border-white border-t-transparent rounded-full payment-loading"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminScreen" class="hidden fade-in">
+            <div class="max-w-6xl mx-auto">
+                <!-- Admin Header -->
+                <div class="skipq-card rounded-2xl p-6 mb-6 border border-gray-100">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
+                                <span class="text-2xl text-white">👑</span>
+                            </div>
+                            <div>
+                                <h2 class="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">Admin Dashboard</h2>
+                                <p class="text-gray-600 font-medium">Manage routes, tickets, and bookings</p>
+                            </div>
+                        </div>
+                        <button onclick="showBookingScreen()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-200">
+                            👤 User View
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Admin Tabs -->
+                <div class="skipq-card rounded-2xl p-6 mb-6 border border-gray-100">
+                    <div class="flex space-x-4 mb-6 border-b border-gray-200">
+                        <button onclick="showAdminTab('routes')" id="routesTab" class="admin-tab active px-4 py-2 font-semibold text-red-600 border-b-2 border-red-600">
+                            🛣️ Routes
+                        </button>
+                        <button onclick="showAdminTab('capacity')" id="capacityTab" class="admin-tab px-4 py-2 font-semibold text-gray-500 hover:text-red-600">
+                            🚌 Bus Capacity
+                        </button>
+                        <button onclick="showAdminTab('schedule')" id="scheduleTab" class="admin-tab px-4 py-2 font-semibold text-gray-500 hover:text-red-600">
+                            📅 Schedule
+                        </button>
+                        <button onclick="showAdminTab('bookings')" id="bookingsTab" class="admin-tab px-4 py-2 font-semibold text-gray-500 hover:text-red-600">
+                            🎫 All Bookings
+                        </button>
+                        <button onclick="showAdminTab('payments')" id="paymentsTab" class="admin-tab px-4 py-2 font-semibold text-gray-500 hover:text-red-600">
+                            💳 Payments
+                        </button>
+                    </div>
+
+                    <!-- Routes Management -->
+                    <div id="routesPanel" class="admin-panel">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Manage Routes & Stations</h3>
+                        
+                        <div class="bg-gradient-to-br from-blue-50 to-green-50 p-6 rounded-xl border border-blue-100 mb-6">
+                            <h4 class="font-bold text-gray-800 mb-3">📊 Current Routes Overview</h4>
+                            <div id="routesOverview" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <!-- Routes will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bus Capacity Management -->
+                    <div id="capacityPanel" class="admin-panel hidden">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Bus Capacity Management</h3>
+                        
+                        <div class="bg-gradient-to-br from-green-50 to-blue-50 p-6 rounded-xl border border-green-100">
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-800 mb-2">🚌 Maximum Tickets Per Bus</label>
+                                    <input type="number" id="maxTicketsInput" min="1" max="100" 
+                                           class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-green-500 text-lg font-medium">
+                                    <button onclick="updateMaxTickets()" class="w-full mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg">
+                                        Update Capacity
+                                    </button>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                                    <h5 class="font-bold text-gray-800 mb-2">📊 Current Status</h5>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span>Max Capacity:</span>
+                                            <span id="displayMaxTickets" class="font-bold text-blue-600">50</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>Tickets Sold:</span>
+                                            <span id="displayTicketsSold" class="font-bold text-green-600">0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>Available:</span>
+                                            <span id="displayAvailable" class="font-bold text-orange-600">50</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Management -->
+                    <div id="schedulePanel" class="admin-panel hidden">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Schedule Management</h3>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Exclude Dates -->
+                            <div class="bg-gradient-to-br from-red-50 to-orange-50 p-4 rounded-xl border border-red-100">
+                                <h4 class="font-bold text-gray-800 mb-3">🚫 Exclude Dates</h4>
+                                <div class="space-y-3">
+                                    <input type="date" id="excludeDate" 
+                                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-red-500">
+                                    <input type="text" id="excludeReason" placeholder="Reason (optional)" 
+                                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-red-500">
+                                    <button onclick="excludeDate()" class="w-full skipq-button text-white font-semibold py-2 px-4 rounded-lg">
+                                        Exclude Date
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Excluded Dates List -->
+                            <div class="bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-xl border border-orange-100">
+                                <h4 class="font-bold text-gray-800 mb-3">📋 Excluded Dates</h4>
+                                <div id="excludedDatesList" class="space-y-2 max-h-40 overflow-y-auto">
+                                    <p class="text-gray-500 text-sm">No dates excluded</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bookings Monitor -->
+                    <div id="bookingsPanel" class="admin-panel hidden">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">All Bookings Monitor</h3>
+                        
+                        <div class="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-100">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="font-bold text-gray-800">📊 Booking Statistics</h4>
+                                <button onclick="refreshBookings()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-4 mb-6">
+                                <div class="bg-white p-3 rounded-lg text-center border border-gray-200">
+                                    <div class="text-2xl font-bold text-blue-600" id="totalBookings">0</div>
+                                    <div class="text-sm text-gray-600">Total Bookings</div>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg text-center border border-gray-200">
+                                    <div class="text-2xl font-bold text-green-600" id="totalRevenue">GH₵ 0</div>
+                                    <div class="text-sm text-gray-600">Total Revenue</div>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg text-center border border-gray-200">
+                                    <div class="text-2xl font-bold text-orange-600" id="totalPassengers">0</div>
+                                    <div class="text-sm text-gray-600">Total Passengers</div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                                    <h5 class="font-bold text-gray-800">Recent Bookings</h5>
+                                </div>
+                                <div id="bookingsList" class="max-h-60 overflow-y-auto">
+                                    <div class="p-4 text-center text-gray-500">No bookings yet</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payments Monitor -->
+                    <div id="paymentsPanel" class="admin-panel hidden">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Payment Transactions</h3>
+                        
+                        <div class="bg-gradient-to-br from-green-50 to-blue-50 p-4 rounded-xl border border-green-100">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="font-bold text-gray-800">💳 Payment Statistics</h4>
+                                <div class="flex space-x-2">
+                                    <button onclick="refreshPayments()" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                                        🔄 Refresh
+                                    </button>
+                                    <button onclick="exportPayments()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                                        📊 Export
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-4 gap-4 mb-6">
+                                <div class="bg-white p-3 rounded-lg text-center border border-gray-200">
+                                    <div class="text-2xl font-bold text-green-600" id="successfulPayments">0</div>
+                                    <div class="text-sm text-gray-600">Successful</div>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg text-center border border-gray-200">
+                                    <div class="text-2xl font-bold text-red-600" id="failedPayments">0</div>
+                                    <div class="text-sm text-gray-600">Failed</div>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg text-center border border-gray-200">
+                                    <div class="text-2xl font-bold text-yellow-600" id="pendingPayments">0</div>
+                                    <div class="text-sm text-gray-600">Pending</div>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg text-center border border-gray-200">
+                                    <div class="text-2xl font-bold text-purple-600" id="totalPaymentRevenue">GH₵ 0</div>
+                                    <div class="text-sm text-gray-600">Revenue</div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                                    <h5 class="font-bold text-gray-800">Recent Payment Transactions</h5>
+                                </div>
+                                <div id="paymentsList" class="max-h-60 overflow-y-auto">
+                                    <div class="p-4 text-center text-gray-500">No payment transactions yet</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Virtual Ticket Modal -->
+        <div id="ticketModal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div class="skipq-card rounded-2xl shadow-2xl max-w-md w-full slide-up border border-gray-200">
+                <div class="p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <span class="text-4xl">🎉</span>
+                        </div>
+                        <h3 class="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">Payment Successful!</h3>
+                        <p class="text-gray-600 font-medium">Your SkipQ e-ticket is ready</p>
+                    </div>
+
+                    <div class="skipq-gradient text-white p-6 rounded-2xl mb-6 shadow-xl">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-3xl">⚡</span>
+                                <div>
+                                    <h4 class="font-bold text-2xl">SkipQ</h4>
+                                    <p class="text-red-100 font-medium">E-Ticket</p>
+                                </div>
+                            </div>
+                            <div class="text-right bg-white bg-opacity-20 rounded-lg p-3">
+                                <p class="text-sm text-red-100">Ticket ID</p>
+                                <p id="ticketId" class="font-mono font-bold text-lg"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t border-white border-opacity-30 pt-6">
+                            <div class="grid grid-cols-2 gap-6 text-sm">
+                                <div class="bg-white bg-opacity-10 rounded-lg p-3">
+                                    <p class="text-red-100 mb-1">🚏 From</p>
+                                    <p id="ticketFrom" class="font-bold text-lg"></p>
+                                </div>
+                                <div class="bg-white bg-opacity-10 rounded-lg p-3">
+                                    <p class="text-red-100 mb-1">🏙️ To</p>
+                                    <p id="ticketTo" class="font-bold text-lg"></p>
+                                </div>
+                                <div class="bg-white bg-opacity-10 rounded-lg p-3">
+                                    <p class="text-red-100 mb-1">📅 Date</p>
+                                    <p id="ticketDate" class="font-bold text-lg"></p>
+                                </div>
+                                <div class="bg-white bg-opacity-10 rounded-lg p-3">
+                                    <p class="text-red-100 mb-1">👥 Passengers</p>
+                                    <p id="ticketPassengers" class="font-bold text-lg"></p>
+                                </div>
+                                <div class="bg-white bg-opacity-10 rounded-lg p-3 col-span-2">
+                                    <p class="text-red-100 mb-1">🪑 Seat Numbers</p>
+                                    <p id="ticketSeats" class="font-bold text-lg"></p>
+                                </div>
+                                <div class="bg-white bg-opacity-10 rounded-lg p-3 col-span-2">
+                                    <p class="text-red-100 mb-1">💳 Payment Method</p>
+                                    <p id="ticketPaymentMethod" class="font-bold text-lg"></p>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-6 border-t border-white border-opacity-30">
+                                <div class="flex justify-between items-center bg-white bg-opacity-20 rounded-lg p-4">
+                                    <span class="text-red-100 font-medium">💰 Total Paid</span>
+                                    <span id="ticketPrice" class="font-bold text-2xl"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-4">
+                        <button onclick="downloadTicket()" 
+                                class="flex-1 skipq-secondary text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg">
+                            📱 Download Ticket
+                        </button>
+                        <button onclick="closeTicketModal()" 
+                                class="flex-1 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-bold py-4 px-6 rounded-xl text-lg shadow-lg transition duration-300">
+                            ✨ Book Another
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+ <script src="script.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'974cae6ff7550338',t:'MTc1NjE0MTYwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

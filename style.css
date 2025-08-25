@@ -1,0 +1,71 @@
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+.skipq-gradient {
+    background: linear-gradient(135deg, #dc2626 0%, #2563eb 100%);
+}
+.skipq-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+.skipq-button {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transition: all 0.3s ease;
+}
+.skipq-button:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(220, 38, 38, 0.3);
+}
+.skipq-secondary {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+.skipq-secondary:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+}
+.pulse-ring {
+    animation: pulse-ring 2s infinite;
+}
+@keyframes pulse-ring {
+    0% { transform: scale(0.33); }
+    80%, 100% { opacity: 0; }
+}
+.admin-tab.active {
+    color: #dc2626;
+    border-bottom-color: #dc2626;
+}
+.admin-panel {
+    display: block;
+}
+.admin-panel.hidden {
+    display: none;
+}
+.warning-shake {
+    animation: shake 0.5s ease-in-out;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+.payment-loading {
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
