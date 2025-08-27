@@ -264,7 +264,7 @@ function init() {
 
 function initializeDepartureRegions() {
     const departureRegionSelect = document.getElementById('departureRegionSelect');
-    departureRegionSelect.innerHTML = '<option value="">1️⃣ First, select your region</option>';
+    departureRegionSelect.innerHTML = '<option value="">select your region</option>';
     
     // Add all regions
     Object.keys(regionData).sort().forEach(regionKey => {
@@ -280,7 +280,7 @@ function updateDepartureStations() {
     const departureStationSelect = document.getElementById('departureStationSelect');
     
     // Reset station selection
-    departureStationSelect.innerHTML = '<option value="">2️⃣ Then, choose your station</option>';
+    departureStationSelect.innerHTML = '<option value="">choose your preferred station</option>';
     
     if (selectedRegion) {
         // Get stations in the selected region
@@ -340,8 +340,8 @@ function resetDestinationSelections() {
     const destinationRegionSelect = document.getElementById('destinationRegionSelect');
     const destinationSelect = document.getElementById('destinationSelect');
     
-    destinationRegionSelect.innerHTML = '<option value="">1️⃣ First, select destination region</option>';
-    destinationSelect.innerHTML = '<option value="">2️⃣ Then, choose your destination</option>';
+    destinationRegionSelect.innerHTML = '<option value="">select destination region</option>';
+    destinationSelect.innerHTML = '<option value="">choose your destination</option>';
     destinationRegionSelect.disabled = true;
     destinationSelect.disabled = true;
     
@@ -362,7 +362,7 @@ function updateDestinations() {
         });
         
         // Populate destination regions
-        destinationRegionSelect.innerHTML = '<option value="">1️⃣ First, select destination region</option>';
+        destinationRegionSelect.innerHTML = '<option value="">select destination region</option>';
         
         Array.from(availableRegions).sort().forEach(region => {
             const option = document.createElement('option');
@@ -382,7 +382,7 @@ function updateDestinationCities() {
     const selectedDestinationRegion = document.getElementById('destinationRegionSelect').value;
     const destinationSelect = document.getElementById('destinationSelect');
     
-    destinationSelect.innerHTML = '<option value="">2️⃣ Then, choose your destination</option>';
+    destinationSelect.innerHTML = '<option value="">choose your destination</option>';
     
     if (departureStation && selectedDestinationRegion && routeData[departureStation]) {
         const availableDestinations = routeData[departureStation].destinations;
@@ -464,9 +464,6 @@ function checkExcludedDate() {
     }
 }
 
-  
-
-
 function adminLogin() {
     isAdmin = true;
     currentUser = {
@@ -546,6 +543,121 @@ function displayRoutesOverview() {
         container.appendChild(cityDiv);
     });
 }
+
+//add routes from admn page
+let regions = [];
+let routes = [];
+
+function addRegion() {
+  const name = document.getElementById("regionName").value.trim();
+  if (!name) return alert("Enter region name");
+  regions.push({ id: Date.now(), name, stations: [], destinations: [] });
+  document.getElementById("regionName").value = "";
+  renderRegions();
+}
+
+function addStation() {
+  const regionId = parseInt(document.getElementById("stationRegionSelect").value);
+  const name = document.getElementById("stationName").value.trim();
+  if (!regionId || !name) return alert("Select region and enter station name");
+  const region = regions.find(r => r.id === regionId);
+  region.stations.push(name);
+  document.getElementById("stationName").value = "";
+  renderStations(regionId);
+}
+
+function addDestination() {
+  const regionId = parseInt(document.getElementById("destinationRegionSelectAdmin").value);
+  const name = document.getElementById("destinationName").value.trim();
+  if (!regionId || !name) return alert("Select region and enter destination name");
+  const region = regions.find(r => r.id === regionId);
+  region.destinations.push(name);
+  document.getElementById("destinationName").value = "";
+  renderDestinations(regionId);
+}
+
+function addRoute() {
+  const fromRegion = parseInt(document.getElementById("routeFromRegion").value);
+  const fromStation = document.getElementById("routeFromStation").value;
+  const toRegion = parseInt(document.getElementById("routeToRegion").value);
+  const toDestination = document.getElementById("routeToDestination").value;
+
+  if (!fromRegion || !fromStation || !toRegion || !toDestination)
+    return alert("Select all fields");
+
+  routes.push({ id: Date.now(), fromRegion, fromStation, toRegion, toDestination });
+  renderRoutes();
+}
+
+function renderRegions() {
+  // Populate region dropdowns
+  const stationRegionSelect = document.getElementById("stationRegionSelect");
+  const destRegionSelect = document.getElementById("destinationRegionSelectAdmin");
+  const routeFromRegion = document.getElementById("routeFromRegion");
+  const routeToRegion = document.getElementById("routeToRegion");
+
+  [stationRegionSelect, destRegionSelect, routeFromRegion, routeToRegion].forEach(sel => {
+    sel.innerHTML = `<option value="">-- Select Region --</option>`;
+    regions.forEach(r => sel.add(new Option(r.name, r.id)));
+  });
+
+  // Show current regions list
+  const list = document.getElementById("regionsList");
+  list.innerHTML = "";
+  regions.forEach(r => {
+    const div = document.createElement("div");
+    div.className = "flex justify-between items-center bg-gray-100 px-3 py-2 rounded";
+    div.innerHTML = `<span>${r.name}</span>
+      <button onclick="deleteRegion(${r.id})" class="text-red-600">❌</button>`;
+    list.appendChild(div);
+  });
+}
+
+function renderStations(regionId) {
+  const list = document.getElementById("stationsList");
+  list.innerHTML = "";
+  const region = regions.find(r => r.id === regionId);
+  if (!region) return;
+  region.stations.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "flex justify-between items-center bg-gray-100 px-3 py-2 rounded";
+    div.innerHTML = `<span>${s}</span>
+      <button onclick="deleteStation(${region.id}, ${i})" class="text-red-600">❌</button>`;
+    list.appendChild(div);
+  });
+}
+
+function renderDestinations(regionId) {
+  const list = document.getElementById("destinationsList");
+  list.innerHTML = "";
+  const region = regions.find(r => r.id === regionId);
+  if (!region) return;
+  region.destinations.forEach((d, i) => {
+    const div = document.createElement("div");
+    div.className = "flex justify-between items-center bg-gray-100 px-3 py-2 rounded";
+    div.innerHTML = `<span>${d}</span>
+      <button onclick="deleteDestination(${region.id}, ${i})" class="text-red-600">❌</button>`;
+    list.appendChild(div);
+  });
+}
+
+function renderRoutes() {
+  const container = document.getElementById("routesOverview");
+  container.innerHTML = "";
+  routes.forEach(r => {
+    const from = regions.find(reg => reg.id === r.fromRegion);
+    const to = regions.find(reg => reg.id === r.toRegion);
+    const card = document.createElement("div");
+    card.className = "p-4 bg-white rounded-lg shadow";
+    card.innerHTML = `
+      <p class="font-bold">${from?.name} (${r.fromStation}) ➝ ${to?.name} (${r.toDestination})</p>
+      <button onclick="deleteRoute(${r.id})" class="text-red-600 text-sm mt-2">❌ Remove</button>
+    `;
+    container.appendChild(card);
+  });
+}
+
+//admin routing end
 
 function showAdminTab(tabName) {
     // Hide all panels
@@ -776,13 +888,34 @@ function updatePaymentsDisplay() {
     });
 }
 
-function showBookingScreen() {
-    document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('adminScreen').classList.add('hidden');
-    document.getElementById('bookingScreen').classList.remove('hidden');
-    document.getElementById('userInfo').classList.remove('hidden');
-    document.getElementById('userPhone').textContent = currentUser.phone;
-}
+// --- updated showBookingScreen that safely accepts a phone ---
+function showBookingScreen(phoneFromVerify) {
+    // show/hide screens
+    const authEl = document.getElementById('authScreen');
+    const adminEl = document.getElementById('adminScreen');
+    const bookingEl = document.getElementById('bookingScreen');
+    const userInfoEl = document.getElementById('userInfo');
+    const userPhoneEl = document.getElementById('userPhone');
+  
+    if (authEl) authEl.classList.add('hidden');
+    if (adminEl) adminEl.classList.add('hidden');
+    if (bookingEl) bookingEl.classList.remove('hidden');
+    if (userInfoEl) userInfoEl.classList.remove('hidden');
+  
+    // Determine phone to display:
+    const phone =
+      phoneFromVerify ||
+      (window.currentUser && (window.currentUser.phoneNumber || window.currentUser.phone)) ||
+      (typeof fullPhone !== 'undefined' ? fullPhone : "") ||
+      "";
+  
+    if (userPhoneEl) {
+      userPhoneEl.textContent = phone;
+    } else {
+      console.warn("userPhone element not found");
+    }
+  }
+  
 
 function calculatePrice() {
     const destinationSelect = document.getElementById('destinationSelect');
@@ -887,161 +1020,175 @@ function initiatePayment() {
     const routeInfo = JSON.parse(destination.value);
     const amountInPesewas = routeInfo.price * passengerCount * 100; // Convert to pesewas for Paystack
     
-    // Show loading state
-    const bookButton = document.getElementById('bookButton');
-    const bookButtonText = document.getElementById('bookButtonText');
-    const paymentLoader = document.getElementById('paymentLoader');
-    
-    bookButton.disabled = true;
-    bookButtonText.textContent = 'Processing Payment...';
-    paymentLoader.classList.remove('hidden');
+// Show loading state
+const bookButton = document.getElementById('bookButton');
+const bookButtonText = document.getElementById('bookButtonText');
+const paymentLoader = document.getElementById('paymentLoader');
 
-    // Prepare booking data
-    const assignedSeats = [];
-    for (let i = 0; i < passengerCount; i++) {
-        let seatNumber = currentTicketsSold + i + 1;
-        assignedSeats.push(seatNumber);
-        bookedSeats.push(seatNumber);
-    }
-    
-    bookingData = {
-        ticketId: 'SQ' + Date.now().toString().slice(-8),
-        from: routeInfo.departureStation,
-        to: routeInfo.name.replace(/🏛️|🌳|🌾|🏖️|⛰️|🌿|🏞️|🌅|🏭|🌊|🏔️/g, '').trim(),
-        date: new Date(travelDate).toLocaleDateString('en-GB'),
-        passengers: passengerCount.toString(),
-        seats: assignedSeats.join(', '),
-        price: totalPrice,
-        paymentMethod: selectedPaymentMethod,
-        bookingTime: new Date().toLocaleString(),
-        userPhone: currentUser.phone,
-        amount: routeInfo.price * passengerCount
-    };
+bookButton.disabled = true;
+bookButtonText.textContent = 'Processing Payment...';
+paymentLoader.classList.remove('hidden');
 
-    // Create payment transaction record
-    const paymentTransaction = {
-        transactionId: 'TXN' + Date.now().toString().slice(-6),
-        ticketId: bookingData.ticketId,
-        amount: bookingData.amount,
-        method: selectedPaymentMethod,
-        status: 'pending',
-        date: new Date().toLocaleString(),
-        customerPhone: currentUser.phone
-    };
+// Prepare booking data
+const assignedSeats = [];
+for (let i = 0; i < passengerCount; i++) {
+    let seatNumber = currentTicketsSold + i + 1;
+    assignedSeats.push(seatNumber);
+    bookedSeats.push(seatNumber);
+}
 
-    // Add to payments array
-    allPayments.push(paymentTransaction);
+bookingData = {
+    ticketId: 'SQ' + Date.now().toString().slice(-8),
+    from: routeInfo.departureStation,
+    to: routeInfo.name.replace(/🏛️|🌳|🌾|🏖️|⛰️|🌿|🏞️|🌅|🏭|🌊|🏔️/g, '').trim(),
+    date: new Date(travelDate).toLocaleDateString('en-GB'),
+    passengers: passengerCount.toString(),
+    seats: assignedSeats.join(', '),
+    price: totalPrice,
+    paymentMethod: selectedPaymentMethod,
+    bookingTime: new Date().toLocaleString(),
+    userPhone: currentUser?.phone || 'N/A',
+    amount: routeInfo.price * passengerCount
+};
 
-    // Use Paystack for ALL payment methods - they handle everything
-    if (selectedPaymentMethod === 'card') {
-        // Use Paystack for card payments
-        initiatePaystackPayment(amountInPesewas, paymentTransaction);
-    } else {
-        // Use Paystack for mobile money and bank transfers too
-        simulateAlternativePayment(amountInPesewas, paymentTransaction);
-    }
+// Create payment transaction record
+const paymentTransaction = {
+    transactionId: 'TXN' + Date.now().toString().slice(-6),
+    ticketId: bookingData.ticketId,
+    amount: bookingData.amount,
+    method: selectedPaymentMethod,
+    status: 'pending',
+    date: new Date().toLocaleString(),
+    customerPhone: currentUser?.phone || 'N/A'
+};
+
+// Add to payments array
+allPayments.push(paymentTransaction);
+
+// Determine which Paystack function to call
+if (selectedPaymentMethod === 'card') {
+    initiatePaystackPayment(amountInPesewas, paymentTransaction);
+} else {
+    simulateAlternativePayment(amountInPesewas, paymentTransaction);
 }
 
 function initiatePaystackPayment(amount, paymentTransaction) {
-    // Note: In production, replace with your actual Paystack public key
-    const handler = PaystackPop.setup({
-        key: PAYSTACK_PUBLIC_KEY, // Your actual Paystack public key
-        email: currentUser.phone.replace('+233', '') + '@skipq.com', // Generate email from phone
-        amount: amount, // Amount in pesewas
-        currency: 'GHS',
-        ref: paymentTransaction.transactionId,
-        metadata: {
-            ticketId: bookingData.ticketId,
-            from: bookingData.from,
-            to: bookingData.to,
-            passengers: bookingData.passengers
-        },
-        callback: function(response) {
-            // Payment successful
-            paymentTransaction.status = 'success';
-            paymentTransaction.paystackRef = response.reference;
-            
-            // Update payment in array
-            const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
-            if (paymentIndex !== -1) {
-                allPayments[paymentIndex] = paymentTransaction;
+    const userEmail = currentUser?.phone
+        ? currentUser.phone.replace('+233', '') + '@skipq.com'
+        : 'guest@skipq.com';
+
+    try {
+        const handler = PaystackPop.setup({
+            key: PAYSTACK_PUBLIC_KEY,
+            email: userEmail,
+            amount: amount, // in pesewas
+            currency: 'GHS',
+            ref: paymentTransaction.transactionId,
+            metadata: {
+                ticketId: bookingData?.ticketId || "N/A",
+                from: bookingData?.from || "N/A",
+                to: bookingData?.to || "N/A",
+                passengers: bookingData?.passengers || "0"
+            },
+            callback: function(response) {
+                console.log("Paystack success:", response);
+                paymentTransaction.status = 'success';
+                paymentTransaction.paystackRef = response.reference;
+
+                const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
+                if (paymentIndex !== -1) {
+                    allPayments[paymentIndex] = paymentTransaction;
+                }
+
+                completeBooking();
+            },
+            onClose: function() {
+                console.warn("Paystack window closed by user");
+                paymentTransaction.status = 'failed';
+
+                const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
+                if (paymentIndex !== -1) {
+                    allPayments[paymentIndex] = paymentTransaction;
+                }
+
+                resetBookingButton();
+                alert('Payment was cancelled. Please try again.');
             }
-            
-            completeBooking();
-        },
-        onClose: function() {
-            // Payment cancelled
-            paymentTransaction.status = 'failed';
-            
-            // Update payment in array
-            const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
-            if (paymentIndex !== -1) {
-                allPayments[paymentIndex] = paymentTransaction;
-            }
-            
-            resetBookingButton();
-            alert('Payment was cancelled. Please try again.');
-        }
-    });
-    
-    handler.openIframe();
+        });
+
+        handler.openIframe();
+    } catch (err) {
+        console.error("Paystack error (card):", err);
+        resetBookingButton();
+        alert("Payment could not be started. Please try again.");
+    }
 }
 
 function simulateAlternativePayment(amount, paymentTransaction) {
-    // Use Paystack for ALL payment methods - they handle mobile money and bank transfers
-    const handler = PaystackPop.setup({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: currentUser.phone.replace('+233', '') + '@skipq.com',
-        amount: amount,
-        currency: 'GHS',
-        ref: paymentTransaction.transactionId,
-        channels: selectedPaymentMethod === 'mobile_money' 
-            ? ['mobile_money'] // Only show mobile money options
-            : selectedPaymentMethod === 'bank_transfer'
-            ? ['bank'] // Only show bank transfer options
-            : ['card', 'bank', 'ussd', 'qr', 'mobile_money'], // All options for card
-        metadata: {
-            ticketId: bookingData.ticketId,
-            from: bookingData.from,
-            to: bookingData.to,
-            passengers: bookingData.passengers,
-            payment_method: selectedPaymentMethod
-        },
-        callback: function(response) {
-            // Real payment successful
-            paymentTransaction.status = 'success';
-            paymentTransaction.paystackRef = response.reference;
-            
-            // Update payment in array
-            const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
-            if (paymentIndex !== -1) {
-                allPayments[paymentIndex] = paymentTransaction;
+    const userEmail = currentUser?.phone
+        ? currentUser.phone.replace('+233', '') + '@skipq.com'
+        : 'guest@skipq.com';
+
+    let payChannels = ['card', 'bank', 'ussd', 'qr', 'mobile_money']; // default
+    if (selectedPaymentMethod === 'mobile_money') {
+        payChannels = ['mobile_money'];
+    } else if (selectedPaymentMethod === 'bank_transfer') {
+        payChannels = ['bank'];
+    }
+
+    try {
+        const handler = PaystackPop.setup({
+            key: PAYSTACK_PUBLIC_KEY,
+            email: userEmail,
+            amount: amount,
+            currency: 'GHS',
+            ref: paymentTransaction.transactionId,
+            channels: payChannels,
+            metadata: {
+                ticketId: bookingData?.ticketId || "N/A",
+                from: bookingData?.from || "N/A",
+                to: bookingData?.to || "N/A",
+                passengers: bookingData?.passengers || "0",
+                payment_method: selectedPaymentMethod
+            },
+            callback: function(response) {
+                console.log("Paystack success:", response);
+                paymentTransaction.status = 'success';
+                paymentTransaction.paystackRef = response.reference;
+
+                const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
+                if (paymentIndex !== -1) {
+                    allPayments[paymentIndex] = paymentTransaction;
+                }
+
+                completeBooking();
+            },
+            onClose: function() {
+                console.warn("Paystack window closed or failed");
+                paymentTransaction.status = 'failed';
+
+                const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
+                if (paymentIndex !== -1) {
+                    allPayments[paymentIndex] = paymentTransaction;
+                }
+
+                resetBookingButton();
+                alert('Payment was cancelled or failed. Please try again.');
             }
-            
-            completeBooking();
-        },
-        onClose: function() {
-            // Payment cancelled or failed
-            paymentTransaction.status = 'failed';
-            
-            // Update payment in array
-            const paymentIndex = allPayments.findIndex(p => p.transactionId === paymentTransaction.transactionId);
-            if (paymentIndex !== -1) {
-                allPayments[paymentIndex] = paymentTransaction;
-            }
-            
-            resetBookingButton();
-            alert('Payment was cancelled or failed. Please try again.');
-        }
-    });
-    
-    handler.openIframe();
+        });
+
+        handler.openIframe();
+    } catch (err) {
+        console.error("Paystack error (alt):", err);
+        resetBookingButton();
+        alert("Payment could not be started. Please try again.");
+    }
 }
 
 function completeBooking() {
     // Add to all bookings for admin tracking
     allBookings.push(bookingData);
-    
+
     // Update ticket count
     currentTicketsSold += parseInt(bookingData.passengers);
 
@@ -1051,6 +1198,8 @@ function completeBooking() {
     // Show ticket
     showTicket();
 }
+}
+
 
 function resetBookingButton() {
     const bookButton = document.getElementById('bookButton');
@@ -1101,39 +1250,196 @@ function closeTicketModal() {
     });
 }
 
-function downloadTicket() {
-    // Create a simple text-based ticket for download
-    const ticketContent = `
-⚡ SKIPQ E-TICKET ⚡
-==========================================
-Skip the Queue, Book with Ease
-
-Ticket ID: ${bookingData.ticketId}
-🚏 From: ${bookingData.from}
-🏙️ To: ${bookingData.to}
-📅 Date: ${bookingData.date}
-👥 Passengers: ${bookingData.passengers}
-🪑 Seat Numbers: ${bookingData.seats}
-💳 Payment Method: ${paymentMethodNames[bookingData.paymentMethod]}
-💰 Total Paid: ${bookingData.price}
-🕒 Booked: ${bookingData.bookingTime}
-
-==========================================
-Present this ticket to the driver
-Visit us at SkipQ.com
-==========================================
-    `;
-
-    const blob = new Blob([ticketContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+// =====================
+//  DOWNLOAD REAL TICKET
+// =====================
+async function downloadTicket() {
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  
+    // 1. Generate QR
+    const qrContainer = document.createElement("div");
+    new QRCode(qrContainer, {
+      text: JSON.stringify({
+        id: bookingData.ticketId,
+        from: bookingData.from,
+        to: bookingData.to,
+        date: bookingData.date,
+        passengers: bookingData.passengers,
+        seats: bookingData.seats
+      }),
+      width: 160,
+      height: 160
+    });
+    const qrCanvas = qrContainer.querySelector("canvas");
+    const qrDataUrl = qrCanvas.toDataURL("image/png");
+  
+    // 2. Create PDF
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([800, 300]); // wider for boarding pass look
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  
+    const primary = rgb(0.1, 0.3, 0.8);  // Blue
+    const accent = rgb(0.9, 0.1, 0.1);   // Red
+    const dark = rgb(0.2, 0.2, 0.2);
+  
+    // Background base
+    page.drawRectangle({ x: 0, y: 0, width: 800, height: 300, color: rgb(1, 1, 1) });
+  
+    // Left main ticket section
+    page.drawRectangle({ x: 0, y: 0, width: 600, height: 300, color: rgb(0.98, 0.98, 0.98) });
+  
+    // Right stub section
+    page.drawRectangle({ x: 600, y: 0, width: 200, height: 300, color: rgb(0.95, 0.95, 0.95) });
+  
+    // Tear line (dashed effect)
+    for (let dashY = 0; dashY < 300; dashY += 12) {
+      page.drawRectangle({ x: 595, y: dashY, width: 2, height: 6, color: rgb(0.7, 0.7, 0.7) });
+    }
+  
+    // Header bar
+    page.drawRectangle({ x: 0, y: 260, width: 800, height: 40, color: primary });
+    page.drawText(" SKIPQ BOARDING PASS", { x: 20, y: 270, size: 16, font: fontBold, color: rgb(1,1,1) });
+  
+    // --- Journey Info
+    let y = 230;
+    const details = [
+      ["Ticket ID", bookingData.ticketId],
+      ["From", bookingData.from],
+      ["To", bookingData.to],
+      ["Date", bookingData.date],
+      ["Passengers", bookingData.passengers],
+      ["Seats", bookingData.seats],
+      ["Payment", paymentMethodNames[bookingData.paymentMethod]],
+      ["Total Paid", `GH₵ ${bookingData.price}`],
+      ["Booked", bookingData.bookingTime]
+    ];
+    details.forEach(([label, value]) => {
+      page.drawText(`${label}:`, { x: 20, y, size: 12, font: fontBold, color: dark });
+      page.drawText(String(value), { x: 160, y, size: 12, font: fontRegular, color: dark });
+      y -= 20;
+    });
+  
+    // --- QR on stub
+    const qrImage = await pdfDoc.embedPng(qrDataUrl);
+    page.drawImage(qrImage, { x: 630, y: 120, width: 140, height: 140 });
+  
+    // Stub text
+    page.drawText("BOARDING PASS", { x: 630, y: 270, size: 12, font: fontBold, color: dark });
+    page.drawText(`From: ${bookingData.from}`, { x: 630, y: 80, size: 10, font: fontRegular, color: dark });
+    page.drawText(`To: ${bookingData.to}`, { x: 630, y: 65, size: 10, font: fontRegular, color: dark });
+    page.drawText(`Date: ${bookingData.date}`, { x: 630, y: 50, size: 10, font: fontRegular, color: dark });
+    page.drawText(`ID: ${bookingData.ticketId}`, { x: 630, y: 35, size: 10, font: fontRegular, color: dark });
+  
+    // Watermark diagonal
+    page.drawText("SKIPQ", {
+      x: 200, y: 100, size: 80, font: fontBold,
+      color: rgb(0.8, 0.8, 0.8), opacity: 0.15, rotate: { type: "degrees", angle: 30 }
+    });
+  
+    // Footer bar
+    page.drawRectangle({ x: 0, y: 0, width: 800, height: 30, color: accent });
+    page.drawText("Present this ticket at boarding gate • Visit SkipQ.com", {
+      x: 20, y: 10, size: 12, font: fontRegular, color: rgb(1,1,1)
+    });
+  
+    // 3. Save & Download
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `SkipQ_Ticket_${bookingData.ticketId}.txt`;
+    a.download = `SkipQ_Ticket_${bookingData.ticketId}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-}
+    URL.revokeObjectURL(url);
+  }
+  
+  // =====================
+  //  PREVIEW SAMPLE TICKET
+  // =====================
+  window.previewTicket = async function () {
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  
+    const data = {
+      ticketId: "TEST123456",
+      from: "Accra",
+      to: "Kumasi",
+      date: "2025-09-01",
+      passengers: 2,
+      seats: "A1, A2",
+      paymentMethod: "Mobile Money",
+      price: "100",
+      bookingTime: "2025-08-26 12:00 PM"
+    };
+  
+    // QR
+    const qrContainer = document.createElement("div");
+    new QRCode(qrContainer, { text: JSON.stringify(data), width: 160, height: 160 });
+    const qrCanvas = qrContainer.querySelector("canvas");
+    const qrDataUrl = qrCanvas.toDataURL("image/png");
+  
+    // PDF
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([800, 300]);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  
+    const primary = rgb(0.1, 0.3, 0.8);
+    const accent = rgb(0.9, 0.1, 0.1);
+    const dark = rgb(0.2, 0.2, 0.2);
+  
+    // Backgrounds
+    page.drawRectangle({ x: 0, y: 0, width: 800, height: 300, color: rgb(1, 1, 1) });
+    page.drawRectangle({ x: 0, y: 0, width: 600, height: 300, color: rgb(0.98, 0.98, 0.98) });
+    page.drawRectangle({ x: 600, y: 0, width: 200, height: 300, color: rgb(0.95, 0.95, 0.95) });
+  
+    // Tear line
+    for (let dashY = 0; dashY < 300; dashY += 12) {
+      page.drawRectangle({ x: 595, y: dashY, width: 2, height: 6, color: rgb(0.7, 0.7, 0.7) });
+    }
+  
+    // Header
+    page.drawRectangle({ x: 0, y: 260, width: 800, height: 40, color: primary });
+    page.drawText("SKIPQ BOARDING PASS (PREVIEW)", { x: 20, y: 270, size: 16, font: fontBold, color: rgb(1,1,1) });
+  
+    // Info
+    let y = 230;
+    Object.entries(data).forEach(([key, val]) => {
+      page.drawText(`${key}:`, { x: 20, y, size: 12, font: fontBold, color: dark });
+      page.drawText(String(val), { x: 160, y, size: 12, font: fontRegular, color: dark });
+      y -= 20;
+    });
+  
+    // QR stub
+    const qrImage = await pdfDoc.embedPng(qrDataUrl);
+    page.drawImage(qrImage, { x: 630, y: 120, width: 140, height: 140 });
+  
+    page.drawText("BOARDING PASS", { x: 630, y: 270, size: 12, font: fontBold, color: dark });
+    page.drawText(`From: ${data.from}`, { x: 630, y: 80, size: 10, font: fontRegular, color: dark });
+    page.drawText(`To: ${data.to}`, { x: 630, y: 65, size: 10, font: fontRegular, color: dark });
+    page.drawText(`Date: ${data.date}`, { x: 630, y: 50, size: 10, font: fontRegular, color: dark });
+    page.drawText(`ID: ${data.ticketId}`, { x: 630, y: 35, size: 10, font: fontRegular, color: dark });
+  
+    // Watermark
+    page.drawText("SKIPQ", {
+      x: 200, y: 100, size: 80, font: fontBold,
+      color: rgb(0.8, 0.8, 0.8), opacity: 0.15, rotate: { type: "degrees", angle: 30 }
+    });
+  
+    // Footer
+    page.drawRectangle({ x: 0, y: 0, width: 800, height: 30, color: accent });
+    page.drawText("Preview Ticket Layout • SkipQ.com", {
+      x: 20, y: 10, size: 12, font: fontRegular, color: rgb(1,1,1)
+    });
+  
+    // Open in new tab
+    const pdfBytes = await pdfDoc.save();
+    const url = URL.createObjectURL(new Blob([pdfBytes], { type: "application/pdf" }));
+    window.open(url, "_blank");
+  };
+
 
 function logout() {
     currentUser = null;

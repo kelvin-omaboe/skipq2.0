@@ -29,6 +29,13 @@
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(220, 38, 38, 0.3);
 }
+.skipq-button:active{
+    transform: translateY(0);
+    box-shadow: 0 5px 10px rgba(220, 38, 38, 0.2);
+    background: linear-gradient(135deg, #b91c1c 0%, #1b4799 100%);
+    transform: translateY(-2px);
+
+}
 .skipq-secondary {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
